@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	// "io/ioutil"
 
 	"layeh.com/asar"
 )
@@ -95,15 +96,23 @@ func main() {
 			os.Exit(1)
 		}
 
-		// target := flag.Arg(2)
+		var builder asar.Builder
+		// var entry asar.Entry
 
-		// err := root.Walk(func(path string, info os.FileInfo, _ error) error {
-		//
-		// })
-		// if err != nil {
-		// 	fmt.Fprintf(os.Stderr, "asar: %s\n", err)
-		// 	os.Exit(1)
-		// }
+		asarFilename := flag.Arg(1)
+		asarArchive, err := os.Create(asarFilename)
+		check(err)
+		defer asarArchive.Close()
+
+		dir := flag.Arg(2)
+
+		// makes an empty asar
+		// builder.AddDir(dir, asar.FlagDir).Root().EncodeTo(asarArchive)
+
+		if _, err := builder.AddDir(dir, asar.FlagDir).Root().EncodeTo(asarArchive); err == nil {
+			fmt.Fprintf(os.Stderr, "Couldn't make : %s\nError was %s", asarFilename, err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -123,4 +132,10 @@ func openFile(file string) *os.File {
 		os.Exit(1)
 	}
 	return openedFile
+}
+
+func check(e error) {
+  if e != nil {
+    panic(e)
+  }
 }
