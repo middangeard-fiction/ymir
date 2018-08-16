@@ -18,6 +18,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    list contents of asar archive\n")
 		fmt.Fprintf(os.Stderr, "  x|extract <archive> <dir>\n")
 		fmt.Fprintf(os.Stderr, "    extract contents of asar archive to directory\n")
+		fmt.Fprintf(os.Stderr, "  c|create <archive> <dir>\n")
+		fmt.Fprintf(os.Stderr, "    create asar archive from directory\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		flag.PrintDefaults()
 	}
@@ -28,27 +30,20 @@ func main() {
 		os.Exit(3)
 	}
 
-	file, err := os.Open(flag.Arg(1))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "asar: %s\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	root, err := asar.Decode(file)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "asar: %s\n", err)
-		os.Exit(1)
-	}
-
 	switch command := flag.Arg(0); command {
 	case "l", "list":
+		file := openFile(flag.Arg(1))
+		defer file.Close()
+		root := openAsar(file)
 		root.Walk(func(path string, _ os.FileInfo, _ error) error {
 			fmt.Println("/" + path)
 			return nil
 		})
 
 	case "x", "extract":
+		file := openFile(flag.Arg(1))
+		defer file.Close()
+		root := openAsar(file)
 		if flag.NArg() < 3 {
 			flag.Usage()
 			os.Exit(1)
@@ -93,5 +88,39 @@ func main() {
 			fmt.Fprintf(os.Stderr, "asar: %s\n", err)
 			os.Exit(1)
 		}
+
+	case "c", "create":
+		if flag.NArg() < 3 {
+			flag.Usage()
+			os.Exit(1)
+		}
+
+		// target := flag.Arg(2)
+
+		// err := root.Walk(func(path string, info os.FileInfo, _ error) error {
+		//
+		// })
+		// if err != nil {
+		// 	fmt.Fprintf(os.Stderr, "asar: %s\n", err)
+		// 	os.Exit(1)
+		// }
 	}
+}
+
+func openAsar(file *os.File) *asar.Entry {
+	root, err := asar.Decode(file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "asar: %s\n", err)
+		os.Exit(1)
+	}
+	return root
+}
+
+func openFile(file string) *os.File {
+	openedFile, err := os.Open(file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "asar: %s\n", err)
+		os.Exit(1)
+	}
+	return openedFile
 }
