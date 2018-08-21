@@ -1,4 +1,4 @@
-package asar // import "layeh.com/asar"
+package asar // import "github.com/jaygooby/asar"
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package asar
+package asar // import "github.com/jaygooby/asar"
 
 import (
 	"io/ioutil"

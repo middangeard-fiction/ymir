@@ -1,12 +1,12 @@
-package main // import "layeh.com/asar/cmd/asar"
+package main // import "github.com/jaygooby/asar"
 
 import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
+	"io/ioutil"
 	"path/filepath"
-	"layeh.com/asar"
+	"github.com/jaygooby/asar"
 )
 
 func main() {
@@ -103,7 +103,6 @@ func main() {
 		dir := flag.Arg(2)
 
 		entries := asar.Builder{}
-		root := entries.Root()
 
 		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -111,11 +110,14 @@ func main() {
 			}
 
 			if info.IsDir() {
-				fmt.Println("Adding dir: ", path, " ~ ", info.Name())
 				entries.AddDir(info.Name(), asar.FlagDir)
 			} else {
-				fmt.Println("Adding file: ", path, " ~ ", info.Name())
-				entries.Add(info.Name(), strings.NewReader(path), info.Size(), asar.FlagDir)
+				// read the file
+				b, err := ioutil.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				entries.AddString(info.Name(), string(b), asar.FlagNone)
 			}
 
 			return nil
@@ -125,7 +127,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Couldn't read: %s\nError was %s\n", dir, err)
 		}
 
-		if _, err := root.EncodeTo(asarArchive); err != nil {
+		if _, err := entries.Root().EncodeTo(asarArchive); err != nil {
 			fmt.Fprintf(os.Stderr, "Couldn't make: %s\nError was %s\n", asarFilename, err)
 			os.Exit(1)
 		}

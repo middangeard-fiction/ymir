@@ -1,4 +1,4 @@
-package asar // import "layeh.com/asar"
+package asar // import "github.com/jaygooby/asar"
 
 import (
 	"bytes"
@@ -29,6 +29,10 @@ func (enc *entryEncoder) WriteField(key string, v interface{}) {
 func (enc *entryEncoder) Encode(e *Entry) error {
 	enc.Header.WriteByte('{')
 	if e.Flags&FlagDir != 0 {
+		if e.Flags& FlagUnpacked !=0{
+			enc.WriteField("unpacked", true)
+			enc.Header.WriteByte(',')
+		}
 		enc.Write("files")
 		enc.Header.WriteString(":{")
 		for i, child := range e.Children {
@@ -59,7 +63,7 @@ func (enc *entryEncoder) Encode(e *Entry) error {
 		if e.Flags&FlagUnpacked == 0 {
 			enc.WriteField("offset", strconv.FormatInt(enc.CurrentOffset, 10))
 			enc.CurrentOffset += e.Size
-			enc.Contents = append(enc.Contents, io.NewSectionReader(e.r, e.baseOffset, e.Size))
+			enc.Contents = append(enc.Contents, io.NewSectionReader(e.r, e.Offset + e.baseOffset, e.Size))
 		} else {
 			enc.WriteField("unpacked", true)
 		}
@@ -93,16 +97,21 @@ func (e *Entry) EncodeTo(w io.Writer) (n int64, err error) {
 		return
 	}
 
+	length:= encoder.Header.Len() - 16
+	var newLen int
 	{
 		var padding [3]byte
-		encoder.Header.Write(padding[:encoder.Header.Len()%4])
+		if mod := length%4; mod != 0 {
+			encoder.Header.Write(padding[:4-mod])
+		}
+		newLen = encoder.Header.Len() - 16
 	}
 
 	header := encoder.Header.Bytes()
 	binary.LittleEndian.PutUint32(header[:4], 4)
-	binary.LittleEndian.PutUint32(header[4:8], 8+uint32(encoder.Header.Len()))
-	binary.LittleEndian.PutUint32(header[8:12], 4+uint32(encoder.Header.Len()))
-	binary.LittleEndian.PutUint32(header[12:16], uint32(encoder.Header.Len()))
+	binary.LittleEndian.PutUint32(header[4:8], 8+uint32(newLen))
+	binary.LittleEndian.PutUint32(header[8:12], 4+uint32(newLen))
+	binary.LittleEndian.PutUint32(header[12:16], uint32(length))
 
 	n, err = encoder.Header.WriteTo(w)
 	if err != nil {

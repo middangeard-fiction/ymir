@@ -1,4 +1,4 @@
-package asar // import "layeh.com/asar"
+package asar // import "github.com/jaygooby/asar"
 
 import (
 	"io"
@@ -16,8 +16,6 @@ type Builder struct {
 
 // Root returns the root Entry.
 func (b *Builder) Root() *Entry {
-	b.init()
-
 	return b.root
 }
 
