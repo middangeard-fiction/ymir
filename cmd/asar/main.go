@@ -4,9 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"path/filepath"
-	// "io/ioutil"
-
 	"layeh.com/asar"
 )
 
@@ -19,7 +18,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    list contents of asar archive\n")
 		fmt.Fprintf(os.Stderr, "  x|extract <archive> <dir>\n")
 		fmt.Fprintf(os.Stderr, "    extract contents of asar archive to directory\n")
-		fmt.Fprintf(os.Stderr, "  c|create <archive> <dir>\n")
+		fmt.Fprintf(os.Stderr, "  p|pack <archive> <dir>\n")
 		fmt.Fprintf(os.Stderr, "    create asar archive from directory\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		flag.PrintDefaults()
@@ -90,14 +89,11 @@ func main() {
 			os.Exit(1)
 		}
 
-	case "c", "create":
+	case "p", "pack":
 		if flag.NArg() < 3 {
 			flag.Usage()
 			os.Exit(1)
 		}
-
-		var builder asar.Builder
-		// var entry asar.Entry
 
 		asarFilename := flag.Arg(1)
 		asarArchive, err := os.Create(asarFilename)
@@ -106,14 +102,39 @@ func main() {
 
 		dir := flag.Arg(2)
 
-		// makes an empty asar
-		// builder.AddDir(dir, asar.FlagDir).Root().EncodeTo(asarArchive)
+		entries := asar.Builder{}
+		root := entries.Root()
 
-		if _, err := builder.AddDir(dir, asar.FlagDir).Root().EncodeTo(asarArchive); err == nil {
-			fmt.Fprintf(os.Stderr, "Couldn't make : %s\nError was %s", asarFilename, err)
+		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if info.IsDir() {
+				fmt.Println("Adding dir: ", path, " ~ ", info.Name())
+				entries.AddDir(info.Name(), asar.FlagDir)
+			} else {
+				fmt.Println("Adding file: ", path, " ~ ", info.Name())
+				entries.Add(info.Name(), strings.NewReader(path), info.Size(), asar.FlagDir)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't read: %s\nError was %s\n", dir, err)
+		}
+
+		if _, err := root.EncodeTo(asarArchive); err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't make: %s\nError was %s\n", asarFilename, err)
 			os.Exit(1)
 		}
+
+	default:
+		flag.Usage()
+		os.Exit(1)
 	}
+
 }
 
 func openAsar(file *os.File) *asar.Entry {
